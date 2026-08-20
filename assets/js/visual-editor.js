@@ -1,8 +1,8 @@
-// visual-editor.js — Motor interactivo estilo PowerPoint/Word
+// visual-editor.js — Motor interactivo estilo PowerPoint/Word con selector de color y formato
 (function () {
   let isEditing = true;
 
-  // Inyectar Barra de Herramientas
+  // Inyectar Barra de Herramientas Superior
   const bar = document.createElement('div');
   bar.id = 'visual-editor-bar';
   bar.innerHTML = `
@@ -16,6 +16,30 @@
     </div>
   `;
   document.body.appendChild(bar);
+
+  // Inyectar Mini Barra Flotante de Formato (Color / Negrita / Resaltado)
+  const floatingToolbar = document.createElement('div');
+  floatingToolbar.id = 've-floating-toolbar';
+  floatingToolbar.innerHTML = `
+    <div class="ve-color-wrapper" title="Color de la letra">
+      <label>
+        <span class="ve-color-preview" id="ve-preview-text-color"></span>
+        🎨 Letra
+        <input type="color" class="ve-color-input" id="ve-text-color-picker" value="#2D8F4E" />
+      </label>
+    </div>
+    <div class="ve-color-wrapper" title="Color de resaltado / fondo">
+      <label>
+        <span class="ve-color-preview" id="ve-preview-bg-color" style="background:#ffea79;"></span>
+        🟡 Resaltar
+        <input type="color" class="ve-color-input" id="ve-bg-color-picker" value="#ffea79" />
+      </label>
+    </div>
+    <button class="ve-tool-btn" id="ve-btn-bold" title="Negrita"><b>B</b></button>
+    <button class="ve-tool-btn" id="ve-btn-italic" title="Cursiva"><i>I</i></button>
+    <button class="ve-tool-btn" id="ve-btn-clear" title="Quitar formato">🧹</button>
+  `;
+  document.body.appendChild(floatingToolbar);
 
   // Inyectar modal
   const modal = document.createElement('div');
@@ -57,40 +81,143 @@
 
     const els = document.querySelectorAll(editableSelectors.join(','));
     els.forEach((el) => {
-      // No hacer editable la barra del editor
-      if (el.closest('#visual-editor-bar') || el.closest('#ve-modal')) return;
+      if (el.closest('#visual-editor-bar') || el.closest('#ve-modal') || el.closest('#ve-floating-toolbar')) return;
       el.setAttribute('contenteditable', active ? 'true' : 'false');
       el.setAttribute('spellcheck', 'false');
     });
+
+    if (!active) {
+      floatingToolbar.style.display = 'none';
+    }
   }
 
   // Activar por defecto
   setEditingState(true);
 
-  // Eventos de la barra
+  // Eventos de la barra superior
   document.getElementById('ve-toggle-mode').addEventListener('click', () => {
     setEditingState(!isEditing);
   });
 
-  // Función para obtener el HTML limpio (sin los elementos del editor)
+  // --- GESTIÓN DE SELECCIÓN Y BARRA FLOTANTE (Formato y Color) ---
+  let savedRange = null;
+
+  function updateFloatingToolbarPosition() {
+    if (!isEditing) return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      floatingToolbar.style.display = 'none';
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const text = selection.toString().trim();
+    if (text.length === 0) {
+      floatingToolbar.style.display = 'none';
+      return;
+    }
+
+    savedRange = range.cloneRange();
+    const rect = range.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    floatingToolbar.style.display = 'flex';
+    const top = rect.top + window.scrollY - 46;
+    const left = rect.left + window.scrollX + (rect.width / 2) - (floatingToolbar.offsetWidth / 2);
+
+    floatingToolbar.style.top = Math.max(60, top) + 'px';
+    floatingToolbar.style.left = Math.max(10, left) + 'px';
+  }
+
+  document.addEventListener('mouseup', () => {
+    setTimeout(updateFloatingToolbarPosition, 10);
+  });
+
+  document.addEventListener('keyup', (e) => {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      setTimeout(updateFloatingToolbarPosition, 10);
+    }
+  });
+
+  function restoreSelection() {
+    if (savedRange) {
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(savedRange);
+    }
+  }
+
+  // Color de Letra
+  const textColorPicker = document.getElementById('ve-text-color-picker');
+  const textColorPreview = document.getElementById('ve-preview-text-color');
+  textColorPicker.addEventListener('input', (e) => {
+    const color = e.target.value;
+    textColorPreview.style.background = color;
+    restoreSelection();
+    document.execCommand('foreColor', false, color);
+    if (savedRange) {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) savedRange = selection.getRangeAt(0).cloneRange();
+    }
+  });
+
+  // Color de Fondo / Resaltador
+  const bgColorPicker = document.getElementById('ve-bg-color-picker');
+  const bgColorPreview = document.getElementById('ve-preview-bg-color');
+  bgColorPicker.addEventListener('input', (e) => {
+    const color = e.target.value;
+    bgColorPreview.style.background = color;
+    restoreSelection();
+    document.execCommand('hiliteColor', false, color);
+    if (savedRange) {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) savedRange = selection.getRangeAt(0).cloneRange();
+    }
+  });
+
+  // Negrita
+  document.getElementById('ve-btn-bold').addEventListener('click', () => {
+    restoreSelection();
+    document.execCommand('bold', false, null);
+  });
+
+  // Cursiva
+  document.getElementById('ve-btn-italic').addEventListener('click', () => {
+    restoreSelection();
+    document.execCommand('italic', false, null);
+  });
+
+  // Quitar formato
+  document.getElementById('ve-btn-clear').addEventListener('click', () => {
+    restoreSelection();
+    document.execCommand('removeFormat', false, null);
+  });
+
+  // Evitar que hacer clic en los botones de la barra flotante deseleccione el texto
+  floatingToolbar.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+  });
+
+  // --- EXPORTAR / GUARDAR ---
   function getCleanHTML() {
-    // Desactivar temporalmente contenteditable
     const clone = document.documentElement.cloneNode(true);
     
-    // Remover elementos del editor del clon
+    // Remover elementos inyectados del editor
     const editorBar = clone.querySelector('#visual-editor-bar');
     if (editorBar) editorBar.remove();
     const editorModal = clone.querySelector('#ve-modal');
     if (editorModal) editorModal.remove();
+    const toolbar = clone.querySelector('#ve-floating-toolbar');
+    if (toolbar) toolbar.remove();
 
-    // Limpiar estilos y atributos inyectados en el body
+    // Limpiar estilos del body
     const body = clone.querySelector('body');
     if (body) {
       body.classList.remove('ve-editing-mode');
       body.style.paddingTop = '';
     }
 
-    // Quitar contenteditable de todos los elementos
+    // Quitar contenteditable
     clone.querySelectorAll('[contenteditable]').forEach((el) => {
       el.removeAttribute('contenteditable');
       el.removeAttribute('spellcheck');
@@ -111,22 +238,18 @@
     URL.revokeObjectURL(url);
 
     showModal(
-      '✅ Archivo index.html Generado',
-      'Tu archivo con todos los textos editados se ha descargado. Reemplázalo en tu carpeta del proyecto.',
+      '✅ Archivo index.html Generado con tus Colores',
+      'Tu archivo con todos los colores y textos editados se ha descargado. Reemplázalo en tu carpeta del proyecto.',
       'powershell -ExecutionPolicy Bypass -File .\\publish.ps1'
     );
   });
 
-  // Modal publicar
+  // Publicar modal
   document.getElementById('ve-publish-btn').addEventListener('click', () => {
-    // También guardamos automáticamente en localStorage por seguridad
-    const html = getCleanHTML();
-    localStorage.setItem('cacaos_klaus_last_edit', html);
-
     showModal(
       '🚀 Publicar cambios a GitHub Pages',
-      'Guarda tu archivo o corre el script de 1 clic <code>publish.ps1</code> en tu terminal para sincronizar automáticamente con tu web en internet:',
-      '.\\publish.ps1'
+      'Guarda tu archivo o corre el script de 1 clic <code>publish.bat</code> en tu carpeta para sincronizar automáticamente con tu web en internet:',
+      '.\\publish.bat'
     );
   });
 
