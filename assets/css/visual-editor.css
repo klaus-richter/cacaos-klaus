@@ -1,0 +1,181 @@
+/* ============================================================
+   visual-editor.css — Panel de Control y herramientas visuales
+   ============================================================ */
+
+/* Barra de herramientas superior flotante */
+#visual-editor-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  background: #111111;
+  color: #ffffff;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.ve-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #2D8F4E;
+}
+
+.ve-logo span {
+  color: #ffffff;
+  font-weight: 400;
+  font-size: 11px;
+  background: #222;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ve-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ve-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.ve-btn-mode {
+  background: #2a2a2a;
+  color: #ffffff;
+  border-color: #444;
+}
+.ve-btn-mode.active {
+  background: #2D8F4E;
+  color: #ffffff;
+  border-color: #2D8F4E;
+}
+
+.ve-btn-save {
+  background: #ffffff;
+  color: #000000;
+}
+.ve-btn-save:hover {
+  background: #e0e0e0;
+}
+
+.ve-btn-publish {
+  background: #0066cc;
+  color: #ffffff;
+}
+.ve-btn-publish:hover {
+  background: #0052a3;
+}
+
+/* Indicador visual de modo edición */
+body.ve-editing-mode [data-ve-editable="true"],
+body.ve-editing-mode h1,
+body.ve-editing-mode h2,
+body.ve-editing-mode h3,
+body.ve-editing-mode p,
+body.ve-editing-mode .btn,
+body.ve-editing-mode .site-logo,
+body.ve-editing-mode .product-card__name,
+body.ve-editing-mode .product-card__price,
+body.ve-editing-mode .product-card__badge,
+body.ve-editing-mode .announcement-bar__item {
+  outline: 1px dashed rgba(45, 143, 78, 0.45);
+  outline-offset: 3px;
+  cursor: text !important;
+  transition: outline 0.15s ease;
+}
+
+body.ve-editing-mode [data-ve-editable="true"]:hover,
+body.ve-editing-mode h1:hover,
+body.ve-editing-mode h2:hover,
+body.ve-editing-mode h3:hover,
+body.ve-editing-mode p:hover,
+body.ve-editing-mode .btn:hover,
+body.ve-editing-mode .site-logo:hover,
+body.ve-editing-mode .product-card__name:hover,
+body.ve-editing-mode .product-card__price:hover,
+body.ve-editing-mode .product-card__badge:hover {
+  outline: 2px solid #2D8F4E !important;
+  background-color: rgba(45, 143, 78, 0.08);
+}
+
+body.ve-editing-mode [contenteditable="true"]:focus {
+  outline: 2px solid #2D8F4E !important;
+  background-color: rgba(45, 143, 78, 0.12);
+}
+
+/* Modal flotante de confirmación */
+.ve-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000000;
+  align-items: center;
+  justify-content: center;
+}
+.ve-modal-overlay.open {
+  display: flex;
+}
+
+.ve-modal-card {
+  background: #1e1e1e;
+  color: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  border: 1px solid #333;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.ve-modal-card h3 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #2D8F4E;
+}
+
+.ve-modal-card p {
+  font-size: 14px;
+  color: #bbb;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+.ve-modal-card pre {
+  background: #111;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #79c0ff;
+  overflow-x: auto;
+  margin-bottom: 18px;
+}
+
+.ve-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
