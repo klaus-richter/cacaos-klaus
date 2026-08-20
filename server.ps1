@@ -1,4 +1,4 @@
-# server.ps1 — Mini servidor local con versionado automático y auto-publicación a GitHub
+# server.ps1 — Mini servidor local con versionado automatico y auto-publicacion a GitHub
 $port = 8080
 $proj = $PSScriptRoot
 Set-Location $proj
@@ -8,7 +8,7 @@ $gh  = "C:\Program Files\GitHub CLI\gh.exe"
 if (-not (Test-Path $git)) { $git = "git" }
 
 # Asegurar carpeta de versiones antiguas
-$versionesDir = "$proj\versiones"
+$versionesDir = Join-Path $proj "versiones"
 if (-not (Test-Path $versionesDir)) {
     New-Item -ItemType Directory -Force -Path $versionesDir | Out-Null
 }
@@ -18,13 +18,12 @@ $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
 
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host " 🎨 Editor Visual Cacao's Klaus Activo en: " -ForegroundColor Cyan
-Write-Host " 👉 http://localhost:$port/editor.html " -ForegroundColor Yellow
-Write-Host " 📁 Las versiones antiguas se guardan en: \versiones\ " -ForegroundColor Magenta
+Write-Host " Editor Visual Cacaos Klaus Activo en: " -ForegroundColor Cyan
+Write-Host " http://localhost:$port/editor.html " -ForegroundColor Yellow
+Write-Host " Las versiones antiguas se guardan en: \versiones\ " -ForegroundColor Magenta
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "Presiona Ctrl+C para detener el servidor.`n"
+Write-Host "Presiona Ctrl+C para detener el servidor."
 
-# Abrir navegador automáticamente
 Start-Process "http://localhost:$port/editor.html"
 
 while ($listener.IsListening) {
@@ -32,7 +31,6 @@ while ($listener.IsListening) {
     $req = $context.Request
     $res = $context.Response
 
-    # CORS Headers
     $res.AddHeader("Access-Control-Allow-Origin", "*")
     $res.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     $res.AddHeader("Access-Control-Allow-Headers", "Content-Type")
@@ -46,50 +44,63 @@ while ($listener.IsListening) {
     $urlPath = $req.Url.LocalPath.TrimStart('/')
     if ($urlPath -eq "") { $urlPath = "editor.html" }
 
-    # Endpoint para guardar, versionar y publicar directo por detrás
     if ($urlPath -eq "api/save-and-publish" -and $req.HttpMethod -eq "POST") {
         try {
             $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
             $htmlContent = $reader.ReadToEnd()
             
-            # 1. Versionar la versión actual previa antes de sobrescribir
             $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
-            if (Test-Path "$proj\index.html") {
-                $backupFile = "$versionesDir\index_$timestamp.html"
-                Copy-Item -Path "$proj\index.html" -Destination $backupFile -Force
-                Write-Host "📦 [Versión Respaldada] $backupFile" -ForegroundColor Cyan
+            $indexPath = Join-Path $proj "index.html"
+            $editorPath = Join-Path $proj "editor.html"
+            
+            if (Test-Path $indexPath) {
+                $backupFile = Join-Path $versionesDir "index_$timestamp.html"
+                Copy-Item -Path $indexPath -Destination $backupFile -Force
+                Write-Host "Version Respaldada: $backupFile" -ForegroundColor Cyan
             }
 
-            # 2. Guardar nuevo index.html y editor.html
-            Set-Content -Path "$proj\index.html" -Value $htmlContent -Encoding UTF8
-            
-            # Actualizar editor.html también
-            $editorHtml = $htmlContent -replace '</head>', "  <link rel=`"stylesheet`" href=`"assets/css/visual-editor.css`" />`n</head>"
-            $editorHtml = $editorHtml -replace '</body>', "  <script src=`"assets/js/visual-editor.js`" defer></script>`n</body>"
-            Set-Content -Path "$proj\editor.html" -Value $editorHtml -Encoding UTF8
+            [System.IO.File]::WriteAllText($indexPath, $htmlContent, [System.Text.Encoding]::UTF8)
 
-            # 3. Push automático a GitHub por detrás
-            $token = (& $gh auth token 2>$null).Trim()
+            $cssInject = '  <link rel="stylesheet" href="assets/css/visual-editor.css" />' + "`n</head>"
+            $jsInject = '  <script src="assets/js/visual-editor.js" defer></script>' + "`n</body>"
+            $editorHtml = $htmlContent.Replace('</head>', $cssInject).Replace('</body>', $jsInject)
+            [System.IO.File]::WriteAllText($editorPath, $editorHtml, [System.Text.Encoding]::UTF8)
+
+            $token = ""
+            if (Test-Path $gh) {
+                $token = (& $gh auth token 2>$null)
+                if ($token) { $token = $token.Trim() }
+            }
             & $git add -A
             & $git commit -m "update ($timestamp): edicion visual automatica con versionado"
             $env:GIT_TERMINAL_PROMPT = "0"
-            if ($token) {
+            if ($token -ne "") {
                 & $git -c credential.helper= push "https://klaus-richter:$token@github.com/klaus-richter/cacaos-klaus.git" main:main 2>&1 | Out-Null
             } else {
                 & $git push origin main 2>&1 | Out-Null
             }
 
-            $responseString = "{`"status`":`"ok`",`"message`":`"¡Publicado exitosamente! Versión respaldada como index_$timestamp.html`",`"version`":`"index_$timestamp.html`",`"url`":`"https://klaus-richter.github.io/cacaos-klaus/`"}"
-            $buffer = [System.Text.Encoding]::UTF8.GetBytes($responseString)
+            $respData = @{
+                status = "ok"
+                message = "Publicado exitosamente en GitHub Pages"
+                version = "index_$timestamp.html"
+                url = "https://klaus-richter.github.io/cacaos-klaus/"
+            }
+            $jsonOut = $respData | ConvertTo-Json -Compress
+            $buffer = [System.Text.Encoding]::UTF8.GetBytes($jsonOut)
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buffer, 0, $buffer.Length)
             $res.Close()
-            Write-Host "✅ [Auto-Publish] Guardado, versionado y subido a GitHub Pages." -ForegroundColor Green
+            Write-Host "Auto-Publish: Guardado, versionado y subido a GitHub Pages." -ForegroundColor Green
             continue
         } catch {
             $err = $_.Exception.Message
-            $responseString = "{`"status`":`"error`",`"message`":`"$err`"}"
-            $buffer = [System.Text.Encoding]::UTF8.GetBytes($responseString)
+            $errData = @{
+                status = "error"
+                message = $err
+            }
+            $jsonOut = $errData | ConvertTo-Json -Compress
+            $buffer = [System.Text.Encoding]::UTF8.GetBytes($jsonOut)
             $res.StatusCode = 500
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buffer, 0, $buffer.Length)
@@ -98,19 +109,17 @@ while ($listener.IsListening) {
         }
     }
 
-    # Servir archivos estáticos
     $filePath = Join-Path $proj $urlPath
     if (Test-Path $filePath -PathType Leaf) {
         $ext = [System.IO.Path]::GetExtension($filePath).ToLower()
-        $contentType = switch ($ext) {
-            ".html" { "text/html; charset=utf-8" }
-            ".css"  { "text/css; charset=utf-8" }
-            ".js"   { "application/javascript; charset=utf-8" }
-            ".svg"  { "image/svg+xml" }
-            ".png"  { "image/png" }
-            ".jpg"  { "image/jpeg" }
-            default { "application/octet-stream" }
-        }
+        $contentType = "application/octet-stream"
+        if ($ext -eq ".html") { $contentType = "text/html; charset=utf-8" }
+        if ($ext -eq ".css") { $contentType = "text/css; charset=utf-8" }
+        if ($ext -eq ".js") { $contentType = "application/javascript; charset=utf-8" }
+        if ($ext -eq ".svg") { $contentType = "image/svg+xml" }
+        if ($ext -eq ".png") { $contentType = "image/png" }
+        if ($ext -eq ".jpg") { $contentType = "image/jpeg" }
+
         $res.ContentType = $contentType
         $bytes = [System.IO.File]::ReadAllBytes($filePath)
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
