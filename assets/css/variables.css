@@ -1,0 +1,52 @@
+:root {
+  /* Palette */
+  --clr-black:   #1c1c1c;
+  --clr-white:   #ffffff;
+  --clr-grey:    #efefef;
+  --clr-grey-md: #cfcfcf;
+  --clr-accent:  #2D8F4E;
+  --clr-text:    #1c1c1c;
+  --clr-muted:   #6b6b6b;
+
+  /* Typography */
+  --ff-head: 'Inter', Helvetica, Arial, sans-serif;
+  --ff-body: 'Inter', Helvetica, Arial, sans-serif;
+  --fw-light:   300;
+  --fw-regular: 400;
+  --fw-bold:    700;
+  --fw-black:   900;
+
+  /* Font sizes (fluid) */
+  --fs-xs:   0.75rem;
+  --fs-sm:   0.875rem;
+  --fs-base: 1rem;
+  --fs-lg:   1.125rem;
+  --fs-xl:   clamp(1.5rem,  3vw, 2.25rem);
+  --fs-2xl:  clamp(2rem,    5vw, 3.5rem);
+  --fs-3xl:  clamp(2.5rem,  7vw, 5rem);
+
+  /* Spacing */
+  --space-xs:  0.5rem;
+  --space-sm:  1rem;
+  --space-md:  2rem;
+  --space-lg:  4rem;
+  --space-xl:  7rem;
+
+  /* Layout */
+  --max-w: 1360px;
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  --header-h: 72px;
+  --bar-h: 36px;
+
+  /* Transitions */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 0.35s;
+
+  /* Borders */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+}
+
+@media (max-width: 749px) {
+  :root { --header-h: 56px; --bar-h: 32px; }
+}
