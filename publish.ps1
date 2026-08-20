@@ -13,10 +13,23 @@ if (-not (Test-Path $versionesDir)) {
 
 $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $indexPath = Join-Path $proj "index.html"
+$editorPath = Join-Path $proj "editor.html"
+
+# 1. Respaldar versión actual
 if (Test-Path $indexPath) {
     $backupFile = Join-Path $versionesDir "index_$timestamp.html"
     Copy-Item -Path $indexPath -Destination $backupFile -Force
     Write-Host "[Respaldo] Copia guardada en: versiones\index_$timestamp.html" -ForegroundColor Cyan
+}
+
+# 2. Sincronizar editor.html con el nuevo index.html para que el editor siempre este al dia
+if (Test-Path $indexPath) {
+    $indexContent = [System.IO.File]::ReadAllText($indexPath, [System.Text.Encoding]::UTF8)
+    $cssTag = "  <link rel=`"stylesheet`" href=`"assets/css/visual-editor.css`" />`n</head>"
+    $jsTag  = "  <script src=`"assets/js/visual-editor.js`" defer></script>`n</body>"
+    $newEditorHtml = $indexContent.Replace('</head>', $cssTag).Replace('</body>', $jsTag)
+    [System.IO.File]::WriteAllText($editorPath, $newEditorHtml, [System.Text.Encoding]::UTF8)
+    Write-Host "[Sincronizado] editor.html actualizado con los ultimos cambios de index.html" -ForegroundColor Cyan
 }
 
 Write-Host ""
