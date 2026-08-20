@@ -1,4 +1,8 @@
 @echo off
 title Editor Visual Cacao's Klaus
-powershell -ExecutionPolicy Bypass -File "%~dp0server.ps1"
+cd /d "%~dp0"
+python server.py
+if errorlevel 1 (
+    py server.py
+)
 pause
