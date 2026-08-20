@@ -1,4 +1,4 @@
-// visual-editor.js — Motor interactivo estilo PowerPoint/Word con selector de color y formato
+// visual-editor.js — Motor interactivo estilo PowerPoint/Word con Guardado y Publicación Automática 1-Clic
 (function () {
   let isEditing = true;
 
@@ -11,8 +11,9 @@
     </div>
     <div class="ve-controls">
       <button class="ve-btn ve-btn-mode active" id="ve-toggle-mode">✏️ Modo Edición: ON</button>
-      <button class="ve-btn ve-btn-save" id="ve-save-btn">💾 Descargar index.html</button>
-      <button class="ve-btn ve-btn-publish" id="ve-publish-btn">🚀 Publicar a GitHub Pages</button>
+      <button class="ve-btn ve-btn-publish" id="ve-save-publish-btn" style="background:#2D8F4E; font-size:13px; padding:7px 18px;">
+        🚀 Guardar y Publicar en Vivo
+      </button>
     </div>
   `;
   document.body.appendChild(bar);
@@ -47,12 +48,12 @@
   modal.id = 've-modal';
   modal.innerHTML = `
     <div class="ve-modal-card">
-      <h3 id="ve-modal-title">💾 Guardar Cambios</h3>
-      <p id="ve-modal-desc">Has editado la página visualmente. Puedes descargar tu nuevo <code>index.html</code> o ejecutar el comando de sincronización.</p>
-      <pre id="ve-modal-code">git add index.html && git commit -m "update: cambios visuales" && git push</pre>
+      <h3 id="ve-modal-title">🎉 ¡Publicado Exitosamente!</h3>
+      <p id="ve-modal-desc">Tus cambios se han guardado localmente y se han subido a GitHub Pages por detrás.</p>
+      <pre id="ve-modal-code">https://klaus-richter.github.io/cacaos-klaus/</pre>
       <div class="ve-modal-actions">
+        <button class="ve-btn ve-btn-publish" id="ve-modal-action" style="background:#2D8F4E;">Ver mi web en vivo ↗</button>
         <button class="ve-btn ve-btn-mode" id="ve-modal-close">Cerrar</button>
-        <button class="ve-btn ve-btn-save" id="ve-modal-action">Aceptar</button>
       </div>
     </div>
   `;
@@ -193,16 +194,14 @@
     document.execCommand('removeFormat', false, null);
   });
 
-  // Evitar que hacer clic en los botones de la barra flotante deseleccione el texto
   floatingToolbar.addEventListener('mousedown', (e) => {
     e.preventDefault();
   });
 
-  // --- EXPORTAR / GUARDAR ---
+  // --- OBTENER HTML LIMPIO ---
   function getCleanHTML() {
     const clone = document.documentElement.cloneNode(true);
     
-    // Remover elementos inyectados del editor
     const editorBar = clone.querySelector('#visual-editor-bar');
     if (editorBar) editorBar.remove();
     const editorModal = clone.querySelector('#ve-modal');
@@ -210,14 +209,12 @@
     const toolbar = clone.querySelector('#ve-floating-toolbar');
     if (toolbar) toolbar.remove();
 
-    // Limpiar estilos del body
     const body = clone.querySelector('body');
     if (body) {
       body.classList.remove('ve-editing-mode');
       body.style.paddingTop = '';
     }
 
-    // Quitar contenteditable
     clone.querySelectorAll('[contenteditable]').forEach((el) => {
       el.removeAttribute('contenteditable');
       el.removeAttribute('spellcheck');
@@ -226,31 +223,53 @@
     return '<!DOCTYPE html>\n' + clone.outerHTML;
   }
 
-  // Descargar archivo
-  document.getElementById('ve-save-btn').addEventListener('click', () => {
+  // --- BOTÓN PRINCIPAL: GUARDAR Y PUBLICAR POR DETRÁS (1 CLIC) ---
+  const savePublishBtn = document.getElementById('ve-save-publish-btn');
+  savePublishBtn.addEventListener('click', async () => {
     const html = getCleanHTML();
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'index.html';
-    a.click();
-    URL.revokeObjectURL(url);
+    const originalText = savePublishBtn.innerHTML;
+    savePublishBtn.innerHTML = '⏳ Guardando y publicando a GitHub...';
+    savePublishBtn.style.opacity = '0.7';
+    savePublishBtn.disabled = true;
 
-    showModal(
-      '✅ Archivo index.html Generado con tus Colores',
-      'Tu archivo con todos los colores y textos editados se ha descargado. Reemplázalo en tu carpeta del proyecto.',
-      'powershell -ExecutionPolicy Bypass -File .\\publish.ps1'
-    );
-  });
+    try {
+      // Intentar enviar al backend local
+      const res = await fetch('/api/save-and-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        body: html
+      });
 
-  // Publicar modal
-  document.getElementById('ve-publish-btn').addEventListener('click', () => {
-    showModal(
-      '🚀 Publicar cambios a GitHub Pages',
-      'Guarda tu archivo o corre el script de 1 clic <code>publish.bat</code> en tu carpeta para sincronizar automáticamente con tu web en internet:',
-      '.\\publish.bat'
-    );
+      if (res.ok) {
+        const data = await res.json();
+        showModal(
+          '🎉 ¡Todo listo y publicado por detrás!',
+          'Tus cambios se guardaron automáticamente en tu <code>index.html</code> y se subieron a GitHub Pages.',
+          'https://klaus-richter.github.io/cacaos-klaus/'
+        );
+      } else {
+        throw new Error('Servidor local no disponible');
+      }
+    } catch (err) {
+      // Fallback si no está corriendo el servidor local (ej. abrió como archivo directo)
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'index.html';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showModal(
+        '💾 Guardado local (Archivo descargado)',
+        'Para que la subida sea 100% automática en 1 clic sin descargar archivos, inicia el editor abriendo <code>abrir-editor.bat</code>.',
+        '.\\publish.bat'
+      );
+    } finally {
+      savePublishBtn.innerHTML = originalText;
+      savePublishBtn.style.opacity = '1';
+      savePublishBtn.disabled = false;
+    }
   });
 
   function showModal(title, desc, code) {
@@ -264,6 +283,6 @@
     modal.classList.remove('open');
   });
   document.getElementById('ve-modal-action').addEventListener('click', () => {
-    modal.classList.remove('open');
+    window.open('https://klaus-richter.github.io/cacaos-klaus/', '_blank');
   });
 })();
