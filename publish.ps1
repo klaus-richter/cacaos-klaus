@@ -26,23 +26,26 @@ foreach ($file in $existingFiles) {
 $nextNum = $maxNum + 1
 $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 
+# 3. Solo renombrar si el usuario copio manualmente index.html o editor.html en la carpeta versiones
+$rawIndex = Join-Path $versionesDir "index.html"
+$rawEditor = Join-Path $versionesDir "editor.html"
+
+if (Test-Path $rawIndex) {
+    $newNameIndex = "$nextNum.index_$timestamp.html"
+    Rename-Item -Path $rawIndex -NewName $newNameIndex -Force
+    Write-Host "[Renombrado] versiones\$newNameIndex" -ForegroundColor Cyan
+}
+
+if (Test-Path $rawEditor) {
+    $newNameEditor = "$nextNum.editor_$timestamp.html"
+    Rename-Item -Path $rawEditor -NewName $newNameEditor -Force
+    Write-Host "[Renombrado] versiones\$newNameEditor" -ForegroundColor Cyan
+}
+
+# 4. Sincronizar editor.html en la raiz con el nuevo index.html
 $indexPath = Join-Path $proj "index.html"
 $editorPath = Join-Path $proj "editor.html"
 
-# 3. Respaldar index y editor con numero correlativo y fecha
-if (Test-Path $indexPath) {
-    $backupIndex = Join-Path $versionesDir "$nextNum.index_$timestamp.html"
-    Copy-Item -Path $indexPath -Destination $backupIndex -Force
-    Write-Host "[Respaldo] Guardado: versiones\$nextNum.index_$timestamp.html" -ForegroundColor Cyan
-}
-
-if (Test-Path $editorPath) {
-    $backupEditor = Join-Path $versionesDir "$nextNum.editor_$timestamp.html"
-    Copy-Item -Path $editorPath -Destination $backupEditor -Force
-    Write-Host "[Respaldo] Guardado: versiones\$nextNum.editor_$timestamp.html" -ForegroundColor Cyan
-}
-
-# 4. Sincronizar editor.html con el nuevo index.html para la siguiente sesion
 if (Test-Path $indexPath) {
     $indexContent = [System.IO.File]::ReadAllText($indexPath, [System.Text.Encoding]::UTF8)
     $cssTag = "  <link rel=`"stylesheet`" href=`"assets/css/visual-editor.css`" />`n</head>"
