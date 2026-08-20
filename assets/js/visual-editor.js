@@ -217,7 +217,15 @@
       if (!body.getAttribute('class')) body.removeAttribute('class');
     }
 
-    // 4. Limpiar atributos contenteditable
+    // 4. Convertir tags <font color="..."> a <span style="color: ... !important;">
+    clone.querySelectorAll('font[color]').forEach((fontEl) => {
+      const span = document.createElement('span');
+      span.style.cssText = `color: ${fontEl.getAttribute('color')} !important;`;
+      span.innerHTML = fontEl.innerHTML;
+      fontEl.replaceWith(span);
+    });
+
+    // 5. Limpiar atributos contenteditable
     clone.querySelectorAll('[contenteditable]').forEach((el) => {
       el.removeAttribute('contenteditable');
       el.removeAttribute('spellcheck');

@@ -228,7 +228,16 @@ body {
   margin-bottom: var(--space-md);
 }
 
-.hero__title span { color: var(--clr-accent); }
+.hero__title span:not([style*="color"]) { color: var(--clr-accent); }
+
+/* Soporte para que los colores elegidos por el usuario manden siempre */
+font[color] {
+  color: inherit !important;
+}
+[style*="color"] {
+  color: inherit;
+}
+
 
 .hero__sub {
   font-size: var(--fs-lg);
