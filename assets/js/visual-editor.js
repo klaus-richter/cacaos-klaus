@@ -1,4 +1,4 @@
-// visual-editor.js — Motor interactivo estilo PowerPoint/Word con Guardado y Publicación Automática 1-Clic
+// visual-editor.js — Portal de Edición Visual Autónomo (Sin servidores requeridos)
 (function () {
   let isEditing = true;
 
@@ -7,18 +7,18 @@
   bar.id = 'visual-editor-bar';
   bar.innerHTML = `
     <div class="ve-logo">
-      ✨ MODO EDITOR VISUAL <span>PowerPoint Style</span>
+      🎨 PORTAL DE EDICIÓN VISUAL <span>Cacao's Klaus</span>
     </div>
     <div class="ve-controls">
       <button class="ve-btn ve-btn-mode active" id="ve-toggle-mode">✏️ Modo Edición: ON</button>
-      <button class="ve-btn ve-btn-publish" id="ve-save-publish-btn" style="background:#2D8F4E; font-size:13px; padding:7px 18px;">
-        🚀 Guardar y Publicar en Vivo
+      <button class="ve-btn ve-btn-save" id="ve-save-btn" style="background:#2D8F4E; color:#fff; font-size:13px; font-weight:700; padding:8px 18px;">
+        💾 Descargar index.html Limpio
       </button>
     </div>
   `;
   document.body.appendChild(bar);
 
-  // Inyectar Mini Barra Flotante de Formato (Color / Negrita / Resaltado)
+  // Inyectar Mini Barra Flotante de Formato (Color de Letra / Resaltador / Negrita)
   const floatingToolbar = document.createElement('div');
   floatingToolbar.id = 've-floating-toolbar';
   floatingToolbar.innerHTML = `
@@ -48,21 +48,19 @@
   modal.id = 've-modal';
   modal.innerHTML = `
     <div class="ve-modal-card">
-      <h3 id="ve-modal-title">🎉 ¡Publicado Exitosamente!</h3>
-      <p id="ve-modal-desc">Tus cambios se han guardado localmente y se han subido a GitHub Pages por detrás.</p>
-      <pre id="ve-modal-code">https://klaus-richter.github.io/cacaos-klaus/</pre>
+      <h3 id="ve-modal-title">✅ Archivo index.html Generado 100% Limpio</h3>
+      <p id="ve-modal-desc">Se ha descargado tu archivo <b>index.html</b> sin ningún botón ni barra de edición. Reemplázalo en tu carpeta del proyecto y haz doble clic en <code>publish.bat</code> para publicarlo en internet.</p>
+      <pre id="ve-modal-code">publish.bat</pre>
       <div class="ve-modal-actions">
-        <button class="ve-btn ve-btn-publish" id="ve-modal-action" style="background:#2D8F4E;">Ver mi web en vivo ↗</button>
-        <button class="ve-btn ve-btn-mode" id="ve-modal-close">Cerrar</button>
+        <button class="ve-btn ve-btn-save" id="ve-modal-close" style="background:#2D8F4E; color:#fff;">Entendido</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
 
-  // Offset superior para que la barra no tape el header
+  // Espacio para que la barra no tape el header
   document.body.style.paddingTop = '52px';
 
-  // Habilitar editable en todos los textos clave
   const editableSelectors = [
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p',
     '.btn', '.site-logo', '.product-card__name',
@@ -92,15 +90,13 @@
     }
   }
 
-  // Activar por defecto
   setEditingState(true);
 
-  // Eventos de la barra superior
   document.getElementById('ve-toggle-mode').addEventListener('click', () => {
     setEditingState(!isEditing);
   });
 
-  // --- GESTIÓN DE SELECCIÓN Y BARRA FLOTANTE (Formato y Color) ---
+  // --- SELECCIÓN Y COLOR ---
   let savedRange = null;
 
   function updateFloatingToolbarPosition() {
@@ -176,19 +172,17 @@
     }
   });
 
-  // Negrita
+  // Formato
   document.getElementById('ve-btn-bold').addEventListener('click', () => {
     restoreSelection();
     document.execCommand('bold', false, null);
   });
 
-  // Cursiva
   document.getElementById('ve-btn-italic').addEventListener('click', () => {
     restoreSelection();
     document.execCommand('italic', false, null);
   });
 
-  // Quitar formato
   document.getElementById('ve-btn-clear').addEventListener('click', () => {
     restoreSelection();
     document.execCommand('removeFormat', false, null);
@@ -198,10 +192,11 @@
     e.preventDefault();
   });
 
-  // --- OBTENER HTML LIMPIO ---
+  // --- GENERAR HTML 100% LIMPIO PARA PRODUCCIÓN ---
   function getCleanHTML() {
     const clone = document.documentElement.cloneNode(true);
     
+    // 1. Eliminar todos los elementos del editor
     const editorBar = clone.querySelector('#visual-editor-bar');
     if (editorBar) editorBar.remove();
     const editorModal = clone.querySelector('#ve-modal');
@@ -209,12 +204,20 @@
     const toolbar = clone.querySelector('#ve-floating-toolbar');
     if (toolbar) toolbar.remove();
 
+    // 2. Eliminar referencias a los estilos y scripts del editor en el <head> y <body>
+    clone.querySelectorAll('link[href*="visual-editor"]').forEach(el => el.remove());
+    clone.querySelectorAll('script[src*="visual-editor"]').forEach(el => el.remove());
+
+    // 3. Limpiar estilos inyectados en el body
     const body = clone.querySelector('body');
     if (body) {
       body.classList.remove('ve-editing-mode');
       body.style.paddingTop = '';
+      if (!body.getAttribute('style')) body.removeAttribute('style');
+      if (!body.getAttribute('class')) body.removeAttribute('class');
     }
 
+    // 4. Limpiar atributos contenteditable
     clone.querySelectorAll('[contenteditable]').forEach((el) => {
       el.removeAttribute('contenteditable');
       el.removeAttribute('spellcheck');
@@ -223,66 +226,21 @@
     return '<!DOCTYPE html>\n' + clone.outerHTML;
   }
 
-  // --- BOTÓN PRINCIPAL: GUARDAR Y PUBLICAR POR DETRÁS (1 CLIC) ---
-  const savePublishBtn = document.getElementById('ve-save-publish-btn');
-  savePublishBtn.addEventListener('click', async () => {
+  // --- DESCARGAR INDEX.HTML LIMPIO ---
+  document.getElementById('ve-save-btn').addEventListener('click', () => {
     const html = getCleanHTML();
-    const originalText = savePublishBtn.innerHTML;
-    savePublishBtn.innerHTML = '⏳ Guardando y publicando a GitHub...';
-    savePublishBtn.style.opacity = '0.7';
-    savePublishBtn.disabled = true;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'index.html';
+    a.click();
+    URL.revokeObjectURL(url);
 
-    try {
-      // Intentar enviar al backend local
-      const res = await fetch('/api/save-and-publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        body: html
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        showModal(
-          '🎉 ¡Todo listo y publicado por detrás!',
-          'Tus cambios se guardaron automáticamente en tu <code>index.html</code> y se subieron a GitHub Pages.',
-          'https://klaus-richter.github.io/cacaos-klaus/'
-        );
-      } else {
-        throw new Error('Servidor local no disponible');
-      }
-    } catch (err) {
-      // Fallback si no está corriendo el servidor local (ej. abrió como archivo directo)
-      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'index.html';
-      a.click();
-      URL.revokeObjectURL(url);
-
-      showModal(
-        '💾 Guardado local (Archivo descargado)',
-        'Para que la subida sea 100% automática en 1 clic sin descargar archivos, inicia el editor abriendo <code>abrir-editor.bat</code>.',
-        '.\\publish.bat'
-      );
-    } finally {
-      savePublishBtn.innerHTML = originalText;
-      savePublishBtn.style.opacity = '1';
-      savePublishBtn.disabled = false;
-    }
-  });
-
-  function showModal(title, desc, code) {
-    document.getElementById('ve-modal-title').innerHTML = title;
-    document.getElementById('ve-modal-desc').innerHTML = desc;
-    document.getElementById('ve-modal-code').innerText = code;
     modal.classList.add('open');
-  }
+  });
 
   document.getElementById('ve-modal-close').addEventListener('click', () => {
     modal.classList.remove('open');
-  });
-  document.getElementById('ve-modal-action').addEventListener('click', () => {
-    window.open('https://klaus-richter.github.io/cacaos-klaus/', '_blank');
   });
 })();

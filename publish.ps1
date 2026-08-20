@@ -1,26 +1,45 @@
-# publish.ps1 — Publica los cambios locales a GitHub Pages
+# publish.ps1 — Publica a GitHub Pages con respaldo automático de versiones antiguas
 $ErrorActionPreference = "Stop"
 $proj = $PSScriptRoot
 Set-Location $proj
 
 $git = "$proj\..\git-portable\bin\cmd\git.exe"
 $gh  = "C:\Program Files\GitHub CLI\gh.exe"
+if (-not (Test-Path $git)) { $git = "git" }
 
-if (-not (Test-Path $git)) {
-    $git = "git"
+# 1. Respaldar versión actual en la carpeta versiones
+$versionesDir = Join-Path $proj "versiones"
+if (-not (Test-Path $versionesDir)) {
+    New-Item -ItemType Directory -Force -Path $versionesDir | Out-Null
 }
 
-Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host " 🚀 Publicando Cacao's Klaus a GitHub... " -ForegroundColor Cyan
-Write-Host "==========================================" -ForegroundColor Cyan
+$timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+$indexPath = Join-Path $proj "index.html"
+if (Test-Path $indexPath) {
+    $backupFile = Join-Path $versionesDir "index_$timestamp.html"
+    Copy-Item -Path $indexPath -Destination $backupFile -Force
+    Write-Host "📦 Copia de seguridad guardada en: versiones\index_$timestamp.html" -ForegroundColor Cyan
+}
 
-# Obtener token de gh para push transparente
-$token = (& $gh auth token).Trim()
+Write-Host "`n=======================================================" -ForegroundColor Green
+Write-Host " 🚀 Publicando Cacao's Klaus a GitHub Pages... " -ForegroundColor Green
+Write-Host "=======================================================`n" -ForegroundColor Green
+
+# 2. Push limpio a GitHub
+$token = ""
+if (Test-Path $gh) {
+    $token = (& $gh auth token 2>$null)
+    if ($token) { $token = $token.Trim() }
+}
 
 & $git add -A
-& $git commit -m "update: cambios visuales en landing"
+& $git commit -m "update ($timestamp): nueva version publicada"
 $env:GIT_TERMINAL_PROMPT = "0"
-& $git -c credential.helper= push "https://klaus-richter:$token@github.com/klaus-richter/cacaos-klaus.git" main:main
+if ($token -ne "") {
+    & $git -c credential.helper= push "https://klaus-richter:$token@github.com/klaus-richter/cacaos-klaus.git" main:main
+} else {
+    & $git push origin main
+}
 
-Write-Host "`n✅ ¡Listo! En ~30 segundos tus cambios estarán en vivo en:" -ForegroundColor Green
+Write-Host "`n✅ ¡Publicado exitosamente! Tu web pública limpia se actualizará en 30 segundos:" -ForegroundColor Green
 Write-Host "👉 https://klaus-richter.github.io/cacaos-klaus/`n" -ForegroundColor Yellow
